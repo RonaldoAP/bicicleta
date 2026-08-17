@@ -7,7 +7,7 @@ const PUBLIC_PATHS = ["/login", "/auth"];
  * Renova o token da sessão em cada navegação e barra as rotas privadas de quem
  * não está autenticado. Sem isso, a sessão expira e o painel abre vazio.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
