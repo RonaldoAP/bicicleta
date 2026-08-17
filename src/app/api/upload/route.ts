@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { GpxError, parseGpx } from "@/lib/gpx";
 import { analyze, DEFAULT_PROFILE, type Profile } from "@/lib/metrics";
+import { OWNER_ID } from "@/lib/owner";
 import { activityFields, storagePathFor } from "@/lib/persist";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,13 +26,6 @@ function defaultName(startedAt: string): string {
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Sessão expirada. Entre novamente." }, { status: 401 });
-  }
 
   let formData: FormData;
   try {
@@ -59,7 +53,7 @@ export async function POST(request: Request) {
   const { data: profileRow } = await supabase
     .from("profiles")
     .select("weight_kg, bike_weight_kg, hr_max, hr_rest, hr_threshold, ftp_w, cda, crr")
-    .eq("id", user.id)
+    .eq("id", OWNER_ID)
     .maybeSingle();
 
   const profile: Profile = profileRow
@@ -87,7 +81,7 @@ export async function POST(request: Request) {
   const { data: existing } = await supabase
     .from("activities")
     .select("id, name")
-    .eq("user_id", user.id)
+    .eq("user_id", OWNER_ID)
     .eq("file_hash", fileHash)
     .maybeSingle();
 
@@ -124,7 +118,7 @@ export async function POST(request: Request) {
   const { data: activity, error: insertError } = await supabase
     .from("activities")
     .insert({
-      user_id: user.id,
+      user_id: OWNER_ID,
       name,
       sport: sport?.toLowerCase().includes("run") ? "running" : "cycling",
       file_name: file.name,
@@ -158,7 +152,7 @@ export async function POST(request: Request) {
 
   if (climbs.length > 0) {
     const { error: climbError } = await supabase.from("climbs").insert(
-      climbs.map((climb) => ({ ...climb, activity_id: activity.id, user_id: user.id })),
+      climbs.map((climb) => ({ ...climb, activity_id: activity.id, user_id: OWNER_ID })),
     );
     if (climbError) {
       // As subidas são derivadas: o treino segue válido sem elas.
@@ -168,7 +162,7 @@ export async function POST(request: Request) {
 
   // Guarda o arquivo original para permitir reprocessar depois. Se falhar, o
   // treino continua válido — só perde a chance de ser recalculado.
-  const storagePath = storagePathFor(user.id, activity.id);
+  const storagePath = storagePathFor(OWNER_ID, activity.id);
   const { error: storageError } = await supabase.storage
     .from("gpx")
     .upload(storagePath, raw, { contentType: "application/gpx+xml", upsert: true });

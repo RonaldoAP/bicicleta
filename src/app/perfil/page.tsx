@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
 import { Nav } from "@/components/nav";
 import { ProfileForm } from "@/components/profile-form";
 import { hrZoneBounds } from "@/lib/metrics";
+import { OWNER_ID } from "@/lib/owner";
 import { createClient } from "@/lib/supabase/server";
 import type { ProfileRow } from "@/lib/types";
 
@@ -9,14 +9,9 @@ export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
 
   const [{ data: profileData }, { count }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("*").eq("id", OWNER_ID).maybeSingle(),
     supabase.from("activities").select("id", { count: "exact", head: true }),
   ]);
 
@@ -33,7 +28,7 @@ export default async function ProfilePage() {
           </h1>
         </div>
         <div className="rider">
-          <b>{user.email}</b>
+          <b>{profile?.display_name || "Meus treinos"}</b>
           {count ?? 0} {count === 1 ? "treino importado" : "treinos importados"}
         </div>
       </div>
@@ -41,7 +36,7 @@ export default async function ProfilePage() {
       <Nav />
 
       <div className="grid2">
-        <ProfileForm profile={profile} userId={user.id} activityCount={count ?? 0} />
+        <ProfileForm profile={profile} userId={OWNER_ID} activityCount={count ?? 0} />
 
         <div className="panel">
           <h3>Suas zonas de frequência cardíaca</h3>

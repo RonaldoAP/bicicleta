@@ -82,8 +82,13 @@ em movimento.
 
 ## Banco
 
-Quatro tabelas no Supabase, todas com Row Level Security amarrada em
-`auth.uid()`, então cada conta só alcança os próprios dados:
+> **Modo pessoal, sem autenticação.** Não há login: todos os treinos pertencem a
+> um dono único, identificado pelo UUID fixo em `src/lib/owner.ts`, e as
+> políticas de acesso do banco estão abertas. Na prática, **quem tiver a URL vê e
+> sobe treinos**. As colunas `user_id` continuam no schema de propósito: devolver
+> o login é trocar essa constante pelo id da sessão, sem migrar dado nenhum.
+
+Quatro tabelas no Supabase:
 
 - `profiles` — parâmetros do atleta usados nos cálculos
 - `activities` — resumo de cada treino, com zonas, parciais e traçado em `jsonb`

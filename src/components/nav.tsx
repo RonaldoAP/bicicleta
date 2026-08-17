@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/", label: "Painel" },
@@ -14,14 +12,6 @@ const LINKS = [
 
 export function Nav() {
   const pathname = usePathname();
-  const router = useRouter();
-  const [signingOut, setSigningOut] = useState(false);
-
-  async function signOut() {
-    setSigningOut(true);
-    await createClient().auth.signOut();
-    router.replace("/login");
-  }
 
   return (
     <nav className="nav">
@@ -34,9 +24,6 @@ export function Nav() {
       <Link href="/upload" className="cta">
         + Subir GPX
       </Link>
-      <button type="button" onClick={signOut} disabled={signingOut}>
-        {signingOut ? "Saindo…" : "Sair"}
-      </button>
     </nav>
   );
 }

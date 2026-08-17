@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseGpx } from "@/lib/gpx";
 import { analyze, DEFAULT_PROFILE, type Profile } from "@/lib/metrics";
+import { OWNER_ID } from "@/lib/owner";
 import { activityFields } from "@/lib/persist";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,18 +17,11 @@ const BATCH = 25;
  */
 export async function POST() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Sessão expirada. Entre novamente." }, { status: 401 });
-  }
 
   const { data: profileRow } = await supabase
     .from("profiles")
     .select("weight_kg, bike_weight_kg, hr_max, hr_rest, hr_threshold, ftp_w, cda, crr")
-    .eq("id", user.id)
+    .eq("id", OWNER_ID)
     .maybeSingle();
 
   const profile: Profile = profileRow
@@ -90,7 +84,7 @@ export async function POST() {
       if (climbs.length > 0) {
         const { error: climbError } = await supabase
           .from("climbs")
-          .insert(climbs.map((climb) => ({ ...climb, activity_id: activity.id, user_id: user.id })));
+          .insert(climbs.map((climb) => ({ ...climb, activity_id: activity.id, user_id: OWNER_ID })));
         if (climbError) throw new Error(climbError.message);
       }
 

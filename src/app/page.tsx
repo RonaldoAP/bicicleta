@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { HeartRateBars, TrendLine, ZoneBars, COLORS } from "@/components/charts";
 import { Nav } from "@/components/nav";
 import { buildHeroInsight, buildInsights, groupClimbs, groupRoutes } from "@/lib/compare";
 import { decimal, hours, integer, km, shortDate, signed } from "@/lib/format";
 import { hrZoneBounds } from "@/lib/metrics";
+import { OWNER_ID } from "@/lib/owner";
 import { createClient } from "@/lib/supabase/server";
 import type { ActivityRow, ClimbRow, ProfileRow } from "@/lib/types";
 
@@ -22,18 +22,10 @@ function periodLabel(activities: ActivityRow[]): string {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // O proxy já barra visitante sem sessão, mas a página não pode depender disso:
-  // se ele não rodar, o certo é mandar para o login, não estourar um erro 500.
-  if (!user) redirect("/login");
-
   const [{ data: activityData }, { data: climbData }, { data: profileData }] = await Promise.all([
     supabase.from("activities").select("*").order("started_at", { ascending: false }),
     supabase.from("climbs").select("*"),
-    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("*").eq("id", OWNER_ID).maybeSingle(),
   ]);
 
   const activities = (activityData ?? []) as ActivityRow[];
@@ -116,7 +108,7 @@ export default async function DashboardPage() {
           </h1>
         </div>
         <div className="rider">
-          <b>{profile?.display_name || user.email}</b>
+          <b>{profile?.display_name || "Meus treinos"}</b>
           {profile?.location && (
             <>
               {profile.location}
