@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Nav } from "@/components/nav";
 import { ProfileForm } from "@/components/profile-form";
 import { hrZoneBounds } from "@/lib/metrics";
@@ -12,8 +13,10 @@ export default async function ProfilePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) redirect("/login");
+
   const [{ data: profileData }, { count }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user!.id).maybeSingle(),
+    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
     supabase.from("activities").select("id", { count: "exact", head: true }),
   ]);
 
@@ -30,7 +33,7 @@ export default async function ProfilePage() {
           </h1>
         </div>
         <div className="rider">
-          <b>{user?.email}</b>
+          <b>{user.email}</b>
           {count ?? 0} {count === 1 ? "treino importado" : "treinos importados"}
         </div>
       </div>
@@ -38,7 +41,7 @@ export default async function ProfilePage() {
       <Nav />
 
       <div className="grid2">
-        <ProfileForm profile={profile} userId={user!.id} activityCount={count ?? 0} />
+        <ProfileForm profile={profile} userId={user.id} activityCount={count ?? 0} />
 
         <div className="panel">
           <h3>Suas zonas de frequência cardíaca</h3>

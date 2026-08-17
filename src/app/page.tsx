@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { HeartRateBars, TrendLine, ZoneBars, COLORS } from "@/components/charts";
 import { Nav } from "@/components/nav";
 import { buildHeroInsight, buildInsights, groupClimbs, groupRoutes } from "@/lib/compare";
@@ -25,10 +26,14 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // O proxy já barra visitante sem sessão, mas a página não pode depender disso:
+  // se ele não rodar, o certo é mandar para o login, não estourar um erro 500.
+  if (!user) redirect("/login");
+
   const [{ data: activityData }, { data: climbData }, { data: profileData }] = await Promise.all([
     supabase.from("activities").select("*").order("started_at", { ascending: false }),
     supabase.from("climbs").select("*"),
-    supabase.from("profiles").select("*").eq("id", user!.id).maybeSingle(),
+    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
   ]);
 
   const activities = (activityData ?? []) as ActivityRow[];
@@ -111,7 +116,7 @@ export default async function DashboardPage() {
           </h1>
         </div>
         <div className="rider">
-          <b>{profile?.display_name || user?.email}</b>
+          <b>{profile?.display_name || user.email}</b>
           {profile?.location && (
             <>
               {profile.location}

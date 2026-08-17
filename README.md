@@ -54,12 +54,18 @@ cp .env.example .env.local   # preencha com as chaves do seu projeto Supabase
 npm run dev
 ```
 
-Variáveis necessárias (Supabase → Settings → API):
+Variáveis (Supabase → Settings → API):
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ```
+
+Elas são opcionais: `src/lib/supabase/env.ts` traz os valores do projeto padrão
+embutidos, e as variáveis de ambiente têm precedência sobre eles. Embutir é
+seguro porque a chave *publishable* já é entregue ao navegador de todo visitante
+— quem protege os dados é o RLS. Nenhuma chave `service_role` existe no código.
+Para apontar a aplicação para outro projeto Supabase, defina as variáveis.
 
 ## Verificação
 
