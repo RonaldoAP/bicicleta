@@ -3,6 +3,7 @@ import { parseGpx } from "@/lib/gpx";
 import { analyze, DEFAULT_PROFILE, type Profile } from "@/lib/metrics";
 import { OWNER_ID } from "@/lib/owner";
 import { activityFields } from "@/lib/persist";
+import { isUnlocked } from "@/lib/gate";
 import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
@@ -16,6 +17,10 @@ const BATCH = 25;
  * de análise — e ver o histórico inteiro atualizado.
  */
 export async function POST() {
+  if (!(await isUnlocked())) {
+    return NextResponse.json({ error: "Acesso bloqueado. Informe a senha." }, { status: 401 });
+  }
+
   const supabase = await createClient();
 
   const { data: profileRow } = await supabase

@@ -823,9 +823,14 @@ export function analyze(points: RawPoint[], profile: Profile): Analysis {
 
   const climbs = detectClimbs(streams, smoothEle);
 
-  // Estimativa de gasto energético: trabalho mecânico sobre ~22 % de eficiência
-  // metabólica, o valor consagrado para ciclismo.
-  const calories = workKj > 0 ? Math.round(workKj / 0.22) : null;
+  // Gasto energético: o trabalho mecânico dividido pela eficiência metabólica
+  // (~22 %, o valor consagrado para ciclismo) dá a energia gasta em kJ, que
+  // convertida para kcal cai perto de 1 kcal por kJ de trabalho — é daí que vem
+  // o atalho conhecido de ler kJ como se fosse caloria.
+  const METABOLIC_EFFICIENCY = 0.22;
+  const KJ_PER_KCAL = 4.184;
+  const calories =
+    workKj > 0 ? Math.round(workKj / METABOLIC_EFFICIENCY / KJ_PER_KCAL) : null;
 
   const metrics: ActivityMetrics = {
     started_at: new Date(startMs).toISOString(),

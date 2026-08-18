@@ -4,6 +4,7 @@ import { GpxError, parseGpx } from "@/lib/gpx";
 import { analyze, DEFAULT_PROFILE, type Profile } from "@/lib/metrics";
 import { OWNER_ID } from "@/lib/owner";
 import { activityFields, storagePathFor } from "@/lib/persist";
+import { isUnlocked } from "@/lib/gate";
 import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
@@ -25,6 +26,10 @@ function defaultName(startedAt: string): string {
 }
 
 export async function POST(request: Request) {
+  if (!(await isUnlocked())) {
+    return NextResponse.json({ error: "Acesso bloqueado. Informe a senha." }, { status: 401 });
+  }
+
   const supabase = await createClient();
 
   let formData: FormData;

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Unlock } from "@/components/unlock";
+import { isUnlocked } from "@/lib/gate";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -7,7 +9,12 @@ export const metadata: Metadata = {
     "Análise de treinos de ciclismo a partir dos seus próprios arquivos GPX: zonas, subidas, eficiência e evolução.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // O portão fica aqui, e não em middleware, de propósito: foi middleware que
+  // derrubou toda página em produção uma vez, e no layout a checagem é uma
+  // leitura de cookie, sem rede e sem nada que possa falhar.
+  const unlocked = await isUnlocked();
+
   return (
     <html lang="pt-BR">
       <head>
@@ -19,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <div className="wrap">{children}</div>
+        <div className="wrap">{unlocked ? children : <Unlock />}</div>
       </body>
     </html>
   );
