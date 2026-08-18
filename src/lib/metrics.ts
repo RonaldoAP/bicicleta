@@ -13,8 +13,15 @@ const DRIVETRAIN_EFFICIENCY = 0.97;
 const MAX_PLAUSIBLE_SPEED_KMH = 120;
 /** Abaixo disso a bike está parada (semáforo, foto, descanso). */
 const MOVING_THRESHOLD_KMH = 1.5;
-/** Intervalo maior que isso indica pausa na gravação, não tempo pedalando. */
-const MAX_SAMPLE_GAP_S = 30;
+/**
+ * Piso do intervalo que separa "pausa na gravação" de "pedalando". O limite de
+ * verdade é relativo à cadência da fonte: um GPX de relógio grava a cada
+ * segundo, mas uma série reduzida pela API pode trazer um ponto a cada minuto,
+ * e nesse caso um corte fixo classificaria o treino inteiro como parado.
+ */
+const MIN_SAMPLE_GAP_S = 30;
+/** Quantas vezes o intervalo típico ainda conta como gravação contínua. */
+const SAMPLE_GAP_TOLERANCE = 4;
 /** Histerese do ganho de elevação: ignora oscilação menor que isso. */
 const ELEVATION_HYSTERESIS_M = 1.0;
 /** Janela (em metros) da média móvel que suaviza a altimetria do GPS. */
@@ -471,6 +478,7 @@ function detectClimbs(streams: Streams, smoothEle: number[]): Climb[] {
     const duration = time_s[end] - time_s[start];
     const hrSlice = hr.slice(start, end + 1).filter((v): v is number => v !== null);
     const powerSlice = power_w.slice(start, end + 1).filter((v) => v > 0);
+    // `streams.grade` já está em porcentagem — converter de novo inflaria em 100×.
     const maxGrade = Math.max(...grade.slice(start, end + 1));
 
     climbs.push({
@@ -481,7 +489,7 @@ function detectClimbs(streams: Streams, smoothEle: number[]): Climb[] {
       distance_m: round(distance, 1)!,
       elev_gain_m: round(gain, 1)!,
       avg_grade: round(avgGrade * 100, 2)!,
-      max_grade: round(maxGrade * 100, 2)!,
+      max_grade: round(maxGrade, 2)!,
       duration_s: Math.round(duration),
       speed_kmh: duration > 0 ? round((distance / duration) * 3.6, 2)! : 0,
       vam: duration > 0 ? round((gain / duration) * 3600, 0)! : 0,
@@ -537,6 +545,8 @@ export function analyze(points: RawPoint[], profile: Profile): Analysis {
   const n = clean.length;
   const hasTime = clean.every((p) => p.time !== null);
   const startMs = hasTime ? (clean[0].time as number) : Date.now();
+  // Distância da origem, quando todos os pontos a trazem.
+  const hasSourceDistance = clean.every((p) => typeof p.dist === "number");
 
   // --- séries base ---
   const time_s = new Array<number>(n);
@@ -563,17 +573,24 @@ export function analyze(points: RawPoint[], profile: Profile): Analysis {
       const seconds = hasTime ? ((p.time as number) - (prev.time as number)) / 1000 : 1;
       dt[i] = seconds;
       time_s[i] = time_s[i - 1] + seconds;
-      step[i] = haversine(prev.lat, prev.lon, p.lat, p.lon);
+      step[i] = hasSourceDistance
+        ? Math.max(0, (p.dist as number) - (prev.dist as number))
+        : haversine(prev.lat, prev.lon, p.lat, p.lon);
       dist_m[i] = dist_m[i - 1] + step[i];
     }
   }
 
   const smoothEle = smoothByDistance(rawEle, dist_m, ELEVATION_SMOOTH_M);
 
+  // --- limite de intervalo, calibrado pela cadência da própria série ---
+  const intervals = dt.slice(1).filter((v) => v > 0).sort((a, b) => a - b);
+  const medianInterval = intervals.length ? intervals[Math.floor(intervals.length / 2)] : 1;
+  const maxGap = Math.max(MIN_SAMPLE_GAP_S, medianInterval * SAMPLE_GAP_TOLERANCE);
+
   // --- velocidade ---
   const rawSpeedMs = new Array<number>(n).fill(0);
   for (let i = 1; i < n; i++) {
-    if (dt[i] > 0 && dt[i] <= MAX_SAMPLE_GAP_S) rawSpeedMs[i] = step[i] / dt[i];
+    if (dt[i] > 0 && dt[i] <= maxGap) rawSpeedMs[i] = step[i] / dt[i];
   }
   const speedMs = smoothByCount(rawSpeedMs, 2);
   const speed_kmh = speedMs.map((v) => round(v * 3.6, 2)!);
@@ -609,7 +626,7 @@ export function analyze(points: RawPoint[], profile: Profile): Analysis {
   let movingSeconds = 0;
   let elapsedSeconds = 0;
   for (let i = 1; i < n; i++) {
-    const gapOk = dt[i] > 0 && dt[i] <= MAX_SAMPLE_GAP_S;
+    const gapOk = dt[i] > 0 && dt[i] <= maxGap;
     elapsedSeconds += dt[i];
     if (gapOk && speed_kmh[i] >= MOVING_THRESHOLD_KMH) {
       moving[i] = true;

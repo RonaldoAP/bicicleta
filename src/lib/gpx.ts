@@ -10,6 +10,13 @@ export interface RawPoint {
   cadence: number | null;
   power: number | null;
   temp: number | null;
+  /**
+   * Distância acumulada medida na origem, quando existe. GPX não traz esse
+   * campo, mas fontes como a API do Strava trazem — e a medida do aparelho é
+   * melhor que recalcular por Haversine sobre pontos espaçados, que subestima
+   * em estrada sinuosa.
+   */
+  dist?: number | null;
 }
 
 export interface ParsedGpx {

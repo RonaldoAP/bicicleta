@@ -132,6 +132,12 @@ test("detecta a subida com extensão e inclinação corretas", () => {
     Math.abs(climb.start_dist_m - 5000) < 200,
     `início da subida em ${climb.start_dist_m} m, esperado ~5000 m`,
   );
+  // A rampa é constante em 6%: a inclinação máxima não pode fugir disso. Já
+  // saiu como 294% por dupla conversão de fração para porcentagem.
+  assert.ok(
+    climb.max_grade > 4 && climb.max_grade < 9,
+    `inclinação máxima ${climb.max_grade}% fora do esperado numa rampa de 6%`,
+  );
   // 165 bpm na rampa; o limite do trecho pode pegar um ou dois pontos do plano.
   assert.ok(
     Math.abs((climb.avg_hr ?? 0) - 165) <= 2,
